@@ -80,6 +80,46 @@ static pthread_once_t hwinfo_init_control = PTHREAD_ONCE_INIT;
 	}
 #endif
 
+#if CPUINFO_ARCH_ARM || CPUINFO_ARCH_ARM64
+	static void init_static_linux_arm_hwinfo(void) {
+		const struct cpuinfo_cache* l1d = cpuinfo_get_l1d_cache(0);
+		if (l1d != NULL) {
+			nnp_hwinfo.cache.l1 = (struct cache_info) {
+				.size          = l1d->size,
+				.associativity = l1d->associativity,
+				.threads       = l1d->processor_count,
+			};
+			const struct cpuinfo_cache* l2 = cpuinfo_get_l2_cache(0);
+			if (l2 != NULL) {
+				nnp_hwinfo.cache.l2 = (struct cache_info) {
+					.size          = l2->size,
+					.associativity = l2->associativity,
+					.threads       = l2->processor_count,
+					.inclusive     = !!(l2->flags & CPUINFO_CACHE_INCLUSIVE),
+				};
+				const struct cpuinfo_cache* l3 = cpuinfo_get_l3_cache(0);
+				if (l3 != NULL) {
+					nnp_hwinfo.cache.l3 = (struct cache_info) {
+						.size          = l3->size,
+						.associativity = l3->associativity,
+						.threads       = l3->processor_count,
+						.inclusive     = !!(l3->flags & CPUINFO_CACHE_INCLUSIVE),
+					};
+					const struct cpuinfo_cache* l4 = cpuinfo_get_l4_cache(0);
+					if (l4 != NULL) {
+						nnp_hwinfo.cache.l4 = (struct cache_info) {
+							.size          = l4->size,
+							.associativity = l4->associativity,
+							.threads       = l4->processor_count,
+							.inclusive     = !!(l4->flags & CPUINFO_CACHE_INCLUSIVE),
+						};
+					}
+				}
+			}
+		}
+	}
+#endif
+
 #if !CPUINFO_ARCH_X86 && !CPUINFO_ARCH_X86_64 && defined(__APPLE__)
 	static void init_static_ios_hwinfo(void) {
 		nnp_hwinfo.cache.l1 = (struct cache_info) {
@@ -200,6 +240,8 @@ static void init_hwinfo(void) {
 		init_x86_hwinfo();
 	#elif !CPUINFO_ARCH_X86 && !CPUINFO_ARCH_X86_64 && defined(__APPLE__)
 		init_static_ios_hwinfo();
+	#elif CPUINFO_ARCH_ARM || CPUINFO_ARCH_ARM64
+		init_static_linux_arm_hwinfo();
 	#else
 		init_static_hwinfo();
 	#endif
